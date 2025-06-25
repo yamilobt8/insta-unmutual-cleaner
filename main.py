@@ -132,5 +132,5 @@ for link in links:
     clean_links.append(link)
         
 links = clean_links
-print(links)
-print(len(links))
+# print(links)
+# print(len(links))
