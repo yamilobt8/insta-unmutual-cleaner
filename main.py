@@ -10,7 +10,8 @@ from collections import Counter
 import os
 from dotenv import load_dotenv
 
-def get_followers_followings(spans):
+def get_followers_followings_count():
+    spans = driver.find_elements(By.TAG_NAME, "span")
     followings_count = 0
     followers_count = 0
     
@@ -34,6 +35,34 @@ def get_followers_followings(spans):
         
             
     return [followings_count, followers_count]
+
+def get(followers_followings_count):
+    times_to_scorll = int(followers_followings_count) // 12 + 2
+
+    def followings_scroll(times_to_scroll):
+        scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
+
+        for i in range(times_to_scorll):
+            print(f'{i}/{times_to_scorll}')
+            driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
+            sleep(1.5)
+
+    followings_scroll(times_to_scorll)
+
+    a_s = driver.find_elements(By.TAG_NAME, 'a')
+    links = []
+    seen = set()
+                
+    for a in a_s:
+        href = a.get_attribute('href')
+        if href and href.count('/') == 4:
+            if href not in seen:
+                seen.add(href)
+                links.append(href)
+                
+    non_profile_links_number = len(links) - int(followers_followings_count)
+    print(non_profile_links_number)
+    return links[non_profile_links_number:]
 
 
 load_dotenv()
@@ -84,53 +113,24 @@ tabs = driver.window_handles
 driver.switch_to.window(tabs[-1])
 
 
-followings = driver.find_element(By.XPATH, "//a[contains(@href, '/following/')]")
-followings.click()
 
-
-spans = driver.find_elements(By.TAG_NAME, "span")
-data = get_followers_followings(spans)
+data = get_followers_followings_count()
 followings_count = data[0]
 followers_count = data[1]
 
 print(f'your followers number is {followers_count}')        
 print(f'your followings number is {followings_count}')        
 
+followings = driver.find_element(By.XPATH, "//a[contains(@href, '/following/')]")
+followings.click()
+sleep(2)
+followings_list = get(followings_count)
 
-times_to_scorll = int(followings_count) // 12 + 2
-
-def followings_scroll(times_to_scroll):
-    scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
-
-    for i in range(times_to_scorll):
-        print(f'{i}/{times_to_scorll}')
-        driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
-        sleep(1.5)
-
-followings_scroll(times_to_scorll)
-
-sleep(10)
-
-a_s = driver.find_elements(By.TAG_NAME, 'a')
-
-links = []
-
-for i in range(35, len(a_s)):
-    links.append(a_s[i].get_attribute('href')) if a_s[i].get_attribute('href') else print('hello')
-print(links)
-print(len(links))
+followers = driver.find_element(By.XPATH, "//a[contains(@href, '/followers/')]")
+followers.click()
+sleep(2)
+followers_list = get(followers_count)
 
 
-counts = Counter(links)
-clean_links = []
-seen = set()
-
-for link in links:
-    if counts[link] == 2 and link not in seen:
-        seen.add(link)
-        continue
-    clean_links.append(link)
-        
-links = clean_links
-# print(links)
-# print(len(links))
+button = driver.find_element(By.TAG_NAME, 'button')
+button.click()
