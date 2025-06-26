@@ -55,7 +55,7 @@ def get(followers_followings_count):
                 
     for a in a_s:
         href = a.get_attribute('href')
-        if href and href.count('/') == 4:
+        if href:
             if href not in seen:
                 seen.add(href)
                 links.append(href)
@@ -64,6 +64,9 @@ def get(followers_followings_count):
     print(non_profile_links_number)
     return links[non_profile_links_number:]
 
+def close():
+    close_button = driver.find_elements(By.TAG_NAME, 'button')[1]
+    close_button.click()
 
 load_dotenv()
 
@@ -126,11 +129,18 @@ followings.click()
 sleep(2)
 followings_list = get(followings_count)
 
+close()
+
 followers = driver.find_element(By.XPATH, "//a[contains(@href, '/followers/')]")
 followers.click()
 sleep(2)
 followers_list = get(followers_count)
 
+close()
+        
+unmutual = [user_link for user_link in followings_list if user_link not in followers_list]
 
-button = driver.find_element(By.TAG_NAME, 'button')
-button.click()
+print(len(unmutual))
+print(unmutual)
+
+        
