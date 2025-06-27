@@ -37,7 +37,7 @@ def get_followers_followings_count():
     return [followings_count, followers_count]
 
 def get(followers_followings_count):
-    times_to_scorll = int(followers_followings_count) // 12 + 2
+    times_to_scorll = int(followers_followings_count) // 12 + 3
 
     def followings_scroll(times_to_scroll):
         scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
@@ -138,9 +138,7 @@ followers_list = get(followers_count)
 
 close()
         
-unmutual = [user_link for user_link in followings_list if user_link not in followers_list]
+unmutuals = [user_link for user_link in followings_list if user_link not in followers_list]
 
-print(len(unmutual))
-print(unmutual)
-
-        
+for unmutual in unmutuals[:5]:
+    driver.get(unmutual)
