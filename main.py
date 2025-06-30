@@ -67,6 +67,10 @@ def get(followers_followings_count):
 def close():
     close_button = driver.find_elements(By.TAG_NAME, 'button')[1]
     close_button.click()
+    
+def unfollow():
+    buttons = driver.find_elements(By.TAG_NAME, 'button')
+    buttons[-2].click()
 
 load_dotenv()
 
@@ -140,5 +144,63 @@ close()
         
 unmutuals = [user_link for user_link in followings_list if user_link not in followers_list]
 
-for unmutual in unmutuals[:5]:
-    driver.get(unmutual)
+# for unmutual in unmutuals[:5]:
+#     driver.get(unmutual)
+    
+        
+
+followings.click()
+# i need to add the scroll
+followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
+
+child_elements = followings_div.find_elements(By.XPATH, './/*')
+
+buttons_count = 0
+unfollow_buttons = []
+
+
+for child in child_elements:
+    tag_name = child.tag_name
+    if tag_name == 'button':
+        buttons_count += 1
+        unfollow_buttons.append(child)
+        
+for i, following in enumerate(followings_list):
+    if following in unmutuals:
+        unfollow_buttons[i].click()
+        sleep(1)
+        unfollow()
+        
+    
+      
+def unfollow():
+    try:
+        confirm_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, '//button[normalize-space()="Unfollow"]'))
+        )
+        confirm_button.click()
+    except Exception:
+        print('button not found')  
+    sleep(2)
+
+buttons = driver.find_elements(By.TAG_NAME, 'button')
+print(len(buttons))
+
+
+
+print(len(unfollow_buttons))
+print(buttons_count)
+
+
+buttons = driver.find_elements(By.TAG_NAME, 'button')
+unfollowing_buttons = []
+for button in buttons:
+    if button.text == 'Following':
+        unfollowing_buttons.append(button)
+        
+print(len(unfollowing_buttons))
+
+for i, following in enumerate(followings_list):
+    if following in unmutuals:
+        unfollowing_buttons[i].click()
+        unfollow()
