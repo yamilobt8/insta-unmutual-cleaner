@@ -34,43 +34,48 @@ def get_followers_followings_count():
         followings_count = float(followings_count.replace('M', '')) * 1000000
         
             
-    return [followings_count, followers_count]
+    return [int(followings_count), int(followers_count)]
+
+
+def scroll(followers_followings_count):
+    ans = followers_followings_count // 12
+    times_to_scorll =  ans + 3 if followers_followings_count > 60 else ans + 1
+    scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
+        
+    for i in range(times_to_scorll):
+        print(f'{i}/{times_to_scorll}')
+        driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
+        sleep(1.5)
 
 def get(followers_followings_count):
-    times_to_scorll = int(followers_followings_count) // 12 + 3
 
-    def followings_scroll(times_to_scroll):
-        scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
+    scroll(followers_followings_count)
 
-        for i in range(times_to_scorll):
-            print(f'{i}/{times_to_scorll}')
-            driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
-            sleep(1.5)
+    followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
+    followings_users = followings_div.find_elements(By.XPATH, './*')
+    
+    followings_links = []
+    for user in followings_users:
+        user_href = user.find_element(By.TAG_NAME, 'a').get_attribute('href')
+        followings_links.append(user_href)        
+            
+    return followings_links
 
-    followings_scroll(times_to_scorll)
-
-    a_s = driver.find_elements(By.TAG_NAME, 'a')
-    links = []
-    seen = set()
-                
-    for a in a_s:
-        href = a.get_attribute('href')
-        if href:
-            if href not in seen:
-                seen.add(href)
-                links.append(href)
-                
-    non_profile_links_number = len(links) - int(followers_followings_count)
-    print(non_profile_links_number)
-    return links[non_profile_links_number:]
+def unfollow_unmutuals(followers_followgins_count, unmutuals):
+    scroll(followers_followgins_count)
+    followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
+    followings_users = followings_div.find_elements(By.XPATH, './*')
+    
+    for user in followings_users:
+        user_href = user.find_element(By.TAG_NAME, 'a').get_attribute('href')
+        if user_href in unmutuals:
+            user.find_element(By.TAG_NAME, 'button').click()
+            print(f'{user_href[25:-1]} has been unfollowed')
 
 def close():
     close_button = driver.find_elements(By.TAG_NAME, 'button')[1]
     close_button.click()
     
-def unfollow():
-    buttons = driver.find_elements(By.TAG_NAME, 'button')
-    buttons[-2].click()
 
 load_dotenv()
 
@@ -150,57 +155,59 @@ unmutuals = [user_link for user_link in followings_list if user_link not in foll
         
 
 followings.click()
+unfollow_unmutuals(followings_count, unmutuals)
+
 # i need to add the scroll
-followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
+# followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
 
-child_elements = followings_div.find_elements(By.XPATH, './/*')
+# child_elements = followings_div.find_elements(By.XPATH, './/*')
 
-buttons_count = 0
-unfollow_buttons = []
+# buttons_count = 0
+# unfollow_buttons = []
 
 
-for child in child_elements:
-    tag_name = child.tag_name
-    if tag_name == 'button':
-        buttons_count += 1
-        unfollow_buttons.append(child)
+# for child in child_elements:
+#     tag_name = child.tag_name
+#     if tag_name == 'button':
+#         buttons_count += 1
+#         unfollow_buttons.append(child)
         
-for i, following in enumerate(followings_list):
-    if following in unmutuals:
-        unfollow_buttons[i].click()
-        sleep(1)
-        unfollow()
+# for i, following in enumerate(followings_list):
+#     if following in unmutuals:
+#         unfollow_buttons[i].click()
+#         sleep(1)
+#         unfollow()
         
     
       
-def unfollow():
-    try:
-        confirm_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, '//button[normalize-space()="Unfollow"]'))
-        )
-        confirm_button.click()
-    except Exception:
-        print('button not found')  
-    sleep(2)
+# def unfollow():
+#     try:
+#         confirm_button = WebDriverWait(driver, 5).until(
+#             EC.element_to_be_clickable((By.XPATH, '//button[normalize-space()="Unfollow"]'))
+#         )
+#         confirm_button.click()
+#     except Exception:
+#         print('button not found')  
+#     sleep(2)
 
-buttons = driver.find_elements(By.TAG_NAME, 'button')
-print(len(buttons))
-
-
-
-print(len(unfollow_buttons))
-print(buttons_count)
+# buttons = driver.find_elements(By.TAG_NAME, 'button')
+# print(len(buttons))
 
 
-buttons = driver.find_elements(By.TAG_NAME, 'button')
-unfollowing_buttons = []
-for button in buttons:
-    if button.text == 'Following':
-        unfollowing_buttons.append(button)
+
+# print(len(unfollow_buttons))
+# print(buttons_count)
+
+
+# buttons = driver.find_elements(By.TAG_NAME, 'button')
+# unfollowing_buttons = []
+# for button in buttons:
+#     if button.text == 'Following':
+#         unfollowing_buttons.append(button)
         
-print(len(unfollowing_buttons))
+# print(len(unfollowing_buttons))
 
-for i, following in enumerate(followings_list):
-    if following in unmutuals:
-        unfollowing_buttons[i].click()
-        unfollow()
+# for i, following in enumerate(followings_list):
+#     if following in unmutuals:
+#         unfollowing_buttons[i].click()
+#         unfollow()
