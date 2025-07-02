@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 
 def get_followers_followings_count():
     spans = driver.find_elements(By.TAG_NAME, "span")
-    followings_count = 0
-    followers_count = 0
+    followings_count = ""
+    followers_count = ""
     
     for i in range(len(spans) - 1):
         if 'following' in spans[i].text:
@@ -22,25 +22,20 @@ def get_followers_followings_count():
             followers_count = spans[i-1].text.strip()
             break
                 
-    if 'K' in followers_count:
-        followers_count = int(followers_count.replace('K', '')) * 1000
-        
-    elif 'K' in followings_count:
-        followings_count = int(followings_count.replace('K', '')) * 1000
-        
-    elif 'M' in followers_count:
-        followers_count = float(followers_count.replace('M', '')) * 1000000
-        
-    elif 'M' in followings_count:
-        followings_count = float(followings_count.replace('M', '')) * 1000000
+    def parse_count(count_str):
+        if 'K' in count_str:
+            return int(float(count_str.replace('K', '')) * 1000)
+        elif 'M' in count_str:
+            return int(float(count_str.replace('M', '')) * 1000000)
+        return int(count_str)
         
             
-    return [int(followings_count), int(followers_count)]
+    return [parse_count(followings_count),parse_count(followers_count)]
 
 
 def scroll(followers_followings_count):
     ans = followers_followings_count // 12
-    times_to_scorll =  ans + 3 if followers_followings_count > 60 else ans + 1
+    times_to_scorll =  ans + 4 if followers_followings_count > 24 else ans + 2
     scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
         
     for i in range(times_to_scorll):
@@ -48,7 +43,8 @@ def scroll(followers_followings_count):
         driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
         sleep(1.5)
     driver.execute_script("""arguments[0].scrollTo({top: 0,behavior: 'smooth'})""", scrollable_div)
-
+    sleep(1.5)
+    
 def get(followers_followings_count):
 
     scroll(followers_followings_count)
@@ -92,7 +88,7 @@ def login():
     log_in = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
     log_in.click()
 
-load_dotenv()
+load_dotenv(dotenv_path=".env", override=True)
 
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service)
@@ -103,7 +99,7 @@ sleep(5)
 
 login()
 
-sleep(9)
+sleep(10)
 
 try:
     back_up_codes = driver.find_element(By.XPATH, '//button[.//div[text()="backup codes"]]')
@@ -118,7 +114,8 @@ except NoSuchElementException:
 
 
 
-def confirm_error(spans):
+def confirm_error():
+    spans = driver.find_elements(By.TAG_NAME, 'span')
     for span in spans:
         if span.text == 'This code doesn’t work. Check it’s correct or try a new one.':
             return True
@@ -140,22 +137,21 @@ def confirm_login(spans, error=False):
     continue_btn = driver.find_element(By.XPATH, '//span[text()="Continue"]')
     continue_btn.click()
     sleep(2)
-    spans = driver.find_elements(By.TAG_NAME, 'span')
-    if confirm_error(spans):
+    if confirm_error():
         confirm_login(spans, error=True)
     else:
         print('logged_in succesfully')
     
+try:
+    spans = driver.find_elements(By.TAG_NAME, 'span')
+    label = driver.find_element(By.TAG_NAME, 'label').text == 'Code'
+    confiramtion_needed = ['Check your email' in span.text for span in spans]
+    if any(confiramtion_needed) and label:
+        confirm_login(spans)
+except NoSuchElementException:
+    print('No Confirmation detected')
+        
 
-spans = driver.find_elements(By.TAG_NAME, 'span')
-label = driver.find_element(By.TAG_NAME, 'label').text == 'Code'
-confiramtion_needed = ['Check your email' in span.text for span in spans]
-if any(confiramtion_needed) and label:
-    confirm_login(spans)
-    
-        
-        
-sleep(19)
 try:
     not_now = driver.find_element(By.XPATH, "//div[text()='Not now']")
     not_now.click()
@@ -173,7 +169,7 @@ else:
 tabs = driver.window_handles
 driver.switch_to.window(tabs[-1])
 
-
+sleep(5)
 
 data = get_followers_followings_count()
 followings_count = data[0]
@@ -200,5 +196,6 @@ unmutuals = [user_link for user_link in followings_list if user_link not in foll
 
 
 followings.click()
+sleep(2)
 unfollow_unmutuals(followings_count, unmutuals)
-
+close()
