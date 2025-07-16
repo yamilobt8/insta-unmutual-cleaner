@@ -5,11 +5,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from time import sleep
-from collections import Counter
+from selenium.webdriver.chrome.options import Options
+from time import sleep, time
 import os
 from selenium.common.exceptions import NoSuchElementException
 from dotenv import load_dotenv
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
+
+
+
+chrome_options = Options()
+chrome_options.add_argument("--log-level=3")  
+chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
+
 
 def get_followers_followings_count():
     spans = driver.find_elements(By.TAG_NAME, "span")
@@ -23,6 +32,8 @@ def get_followers_followings_count():
             break
                 
     def parse_count(count_str):
+        if not count_str:
+            return count_str
         if 'K' in count_str:
             return int(float(count_str.replace('K', '')) * 1000)
         elif 'M' in count_str:
@@ -91,7 +102,7 @@ def login():
 load_dotenv(dotenv_path=".env", override=True)
 
 service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, chrome_options=chrome_options)
 
 driver.get("https://www.instagram.com/")
 
@@ -161,15 +172,31 @@ except NoSuchElementException:
 account_username = os.getenv('USERNAME')
 if account_username:
     account_url = f'https://instagram.com/{account_username}'
-    driver.execute_script(f"window.open('{account_url}', '_blank');")
+    driver.get(account_url)
 else:
     print('USERNAME env variable is not set')
 
+timeout = 30
+start_time = time()
 
-tabs = driver.window_handles
-driver.switch_to.window(tabs[-1])
 
-sleep(5)
+while True:
+    h2_elements = driver.find_elements(By.TAG_NAME, 'h2')
+    contents = [h2_element.text for h2_element in h2_elements]
+    print(f'content: {contents}')
+    if h2_elements and h2_elements[0].text == account_username:
+        print("Profile loaded!")
+        break
+    
+    if time() - start_time > timeout:
+        print("Timeout: Profile not loaded.")
+        break
+    
+    contents = [h2_element.text for h2_element in h2_elements]
+    
+    print(f'h2_elements: {contents}')
+    sleep(3)
+
 
 data = get_followers_followings_count()
 followings_count = data[0]
@@ -180,22 +207,25 @@ print(f'your followings number is {followings_count}')
 
 followings = driver.find_element(By.XPATH, "//a[contains(@href, '/following/')]")
 followings.click()
-sleep(2)
+sleep(3)
 followings_list = get(followings_count)
+print(f'followings_list len = {len(followings_list)}')
 
 close()
 
 followers = driver.find_element(By.XPATH, "//a[contains(@href, '/followers/')]")
 followers.click()
-sleep(2)
+sleep(3)
 followers_list = get(followers_count)
+print(f'followers_list len = {len(followers_list)}')
 
 close()
         
 unmutuals = [user_link for user_link in followings_list if user_link not in followers_list]
+print(f'unmutuals: {unmutuals}')
 
-
+print('starting unfollowing process')
 followings.click()
-sleep(2)
+sleep(3)
 unfollow_unmutuals(followings_count, unmutuals)
 close()
