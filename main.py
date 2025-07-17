@@ -1,24 +1,18 @@
-from seleniumwire import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 from time import sleep, time
 import os
 from selenium.common.exceptions import NoSuchElementException
 from dotenv import load_dotenv
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
+import sys
+from helper import check_env_variables, setup_driver
 
 
-
-chrome_options = Options()
-chrome_options.add_argument("--log-level=3")  
-chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
-
+if not check_env_variables:
+    print('error: set the env variables first')
+    sys.exit(1)
 
 def get_followers_followings_count():
     spans = driver.find_elements(By.TAG_NAME, "span")
@@ -47,19 +41,25 @@ def get_followers_followings_count():
 def scroll(followers_followings_count):
     ans = followers_followings_count // 12
     times_to_scorll =  ans + 4 if followers_followings_count > 24 else ans + 2
-    scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
-        
-    for i in range(times_to_scorll):
-        print(f'{i}/{times_to_scorll}')
-        driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
+    try:
+        scrollable_div = driver.execute_script("""return document.querySelector('[style="height: auto; overflow: hidden auto;"]').parentElement;""")
+            
+        for i in range(times_to_scorll):
+            print(f'{i}/{times_to_scorll}')
+            driver.execute_script("""arguments[0].scrollTop = arguments[0].scrollHeight;""", scrollable_div)
+            sleep(1.5)
+        driver.execute_script("""arguments[0].scrollTo({top: 0,behavior: 'smooth'})""", scrollable_div)
         sleep(1.5)
-    driver.execute_script("""arguments[0].scrollTo({top: 0,behavior: 'smooth'})""", scrollable_div)
-    sleep(1.5)
+    except Exception as e:
+        print("You have no followings or the scrollable div was not found.")
+        print('--------------------Error--------------------')
+        print(e)
+        print('---------------------------------------------')
+        sys.exit(1)
     
 def get(followers_followings_count):
 
     scroll(followers_followings_count)
-
     followings_div = driver.execute_script("""return document.querySelector('[style="display: flex; flex-direction: column; padding-bottom: 0px; padding-top: 0px; position: relative;"]');""")
     followings_users = followings_div.find_elements(By.XPATH, './*')
     
@@ -90,21 +90,34 @@ def close():
     
     
 def login():
-    username = driver.find_element(By.CSS_SELECTOR, 'input[aria-label="Phone number, username, or email"]')
-    username.send_keys(os.getenv('USERNAME'))
+    username_input = wait.until(
+    EC.presence_of_element_located((By.CSS_SELECTOR, 'input[aria-label="Phone number, username, or email"]'))
+    )
+    username_input.send_keys(os.getenv('USERNAME'))
 
-    password = driver.find_element(By.CSS_SELECTOR, 'input[aria-label="Password"]')
-    password.send_keys(os.getenv("PASSWORD"))
+    password_input = wait.until(
+    EC.presence_of_element_located((By.CSS_SELECTOR, 'input[aria-label="Password"]'))
+    )
+    
+    password_input.send_keys(os.getenv("PASSWORD"))
 
     log_in = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
     log_in.click()
 
 load_dotenv(dotenv_path=".env", override=True)
 
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service, chrome_options=chrome_options)
+browser = input("Which browser do you use?\n1) Firefox\n2) Chrome\nEnter 1 or 2: ").strip()
+if browser == '1':
+    print("Loading Firefox ....")
+    driver = setup_driver('firefox')
+else:
+    print("Loading Chrome ....")
+    driver = setup_driver('chrome')
+
 
 driver.get("https://www.instagram.com/")
+
+wait = WebDriverWait(driver, 15)
 
 sleep(5)
 
@@ -205,17 +218,25 @@ followers_count = data[1]
 print(f'your followers number is {followers_count}')        
 print(f'your followings number is {followings_count}')        
 
-followings = driver.find_element(By.XPATH, "//a[contains(@href, '/following/')]")
-followings.click()
+def click_followers_followings(target):
+    followers_followings_button = WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.XPATH, f'//a[contains(@href, "/{account_username}/{target}/")]'))
+    )
+    try:
+        followers_followings_button.click()
+    except:
+        driver.execute_script("arguments[0].click();", followers_followings_button)
+
+followings = click_followers_followings('following')
 sleep(3)
 followings_list = get(followings_count)
 print(f'followings_list len = {len(followings_list)}')
 
 close()
 
-followers = driver.find_element(By.XPATH, "//a[contains(@href, '/followers/')]")
-followers.click()
+followings = click_followers_followings('followers')
 sleep(3)
+
 followers_list = get(followers_count)
 print(f'followers_list len = {len(followers_list)}')
 
@@ -224,8 +245,12 @@ close()
 unmutuals = [user_link for user_link in followings_list if user_link not in followers_list]
 print(f'unmutuals: {unmutuals}')
 
+if not unmutuals:
+    print('No unmutuals')
+    sys.exit()
+
 print('starting unfollowing process')
-followings.click()
+followings = click_followers_followings('following')
 sleep(3)
 unfollow_unmutuals(followings_count, unmutuals)
 close()
